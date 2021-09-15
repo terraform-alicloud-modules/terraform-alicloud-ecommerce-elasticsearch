@@ -21,7 +21,7 @@ resource "alicloud_instance" "instance" {
   internet_charge_type       = var.internet_charge_type
   internet_max_bandwidth_out = var.internet_max_bandwidth_out
   password                   = var.ecs_password
-  instance_charge_type       = "PostPaid"
+  instance_charge_type       = var.instance_charge_type
   system_disk_category       = var.disk_category
   system_disk_size           = var.system_disk_size
   vswitch_id                 = element(split(",",join(",",alicloud_vswitch.vswitch.*.id)),1)
@@ -31,73 +31,74 @@ resource "alicloud_instance" "instance" {
 resource "alicloud_security_group" "group" {
   name        = var.security_group_name
   vpc_id      = alicloud_vpc.vpc.id
-  description = "ec security group"
+  description = var.description
 }
 
 resource "alicloud_security_group_rule" "rdp" {
-  type              = "ingress"
+  type              = var.rule_type
   ip_protocol       = "tcp"
   nic_type          = var.nic_type
-  policy            = "accept"
-  port_range        = "3389/3389"
-  priority          = 1
+  policy            = var.rule_policy
+  port_range        = var.rdp_port_range
+  priority          = var.rule_priority
   security_group_id = alicloud_security_group.group.id
-  cidr_ip           = "0.0.0.0/0"
+  cidr_ip           = var.vpc_cidr
 }
 
 resource "alicloud_security_group_rule" "ssh" {
-  type              = "ingress"
+  type              = var.rule_type
   ip_protocol       = "tcp"
   nic_type          = var.nic_type
-  policy            = "accept"
-  port_range        = "22/22"
-  priority          = 1
+  policy            = var.rule_policy
+  port_range        = var.ssh_port_range
+  priority          = var.rule_priority
   security_group_id = alicloud_security_group.group.id
-  cidr_ip           = "0.0.0.0/0"
+  cidr_ip           = var.vpc_cidr
 }
 
-
 resource "alicloud_security_group_rule" "icmp" {
-  type              = "ingress"
+  type              = var.rule_type
   ip_protocol       = "icmp"
   nic_type          = var.nic_type
-  policy            = "accept"
-  port_range        = "-1/-1"
-  priority          = 1
+  policy            = var.rule_policy
+  port_range        = var.icmp_port_range
+  priority          = var.rule_priority
   security_group_id = alicloud_security_group.group.id
-  cidr_ip           = "0.0.0.0/0"
+  cidr_ip           = var.vpc_cidr
 }
 
 
 resource "alicloud_security_group_rule" "http" {
-  type              = "ingress"
+  type              = var.rule_type
   ip_protocol       = "tcp"
   nic_type          = var.nic_type
-  policy            = "accept"
-  port_range        = "80/80"
-  priority          = 1
+  policy            = var.rule_policy
+  port_range        = var.http_port_range
+  priority          = var.rule_priority
   security_group_id = alicloud_security_group.group.id
-  cidr_ip           = "0.0.0.0/0"
+  cidr_ip           = var.vpc_cidr
 }
 
 # EIP
-resource "alicloud_eip" "eip" {
-  bandwidth            = "10"
-  internet_charge_type = "PayByBandwidth"
+resource "alicloud_eip_address" "eip" {
+  address_name         = var.name
+  isp                  = var.eip_isp
+  internet_charge_type = var.eip_internet_charge_type
+  payment_type         = var.eip_payment_type
 }
 
 resource "alicloud_eip_association" "eip_asso" {
-  allocation_id = alicloud_eip.eip.id
+  allocation_id = alicloud_eip_address.eip.id
   instance_id   = alicloud_instance.instance[0].id
 }
 
 # RDS
 resource "alicloud_db_instance" "rds" {
-  engine               = "MySQL"
-  engine_version       = "5.7"
-  instance_type        = "rds.mysql.s2.large"
-  instance_storage     = "100"
-  instance_charge_type = "Postpaid"
+  engine               = var.engine
+  engine_version       = var.engine_version
+  instance_type        = var.instance_type
+  instance_storage     = var.instance_storage
+  instance_charge_type = var.instance_charge_type
   zone_id              = var.rds_zone_id
   vswitch_id           = element(split(",",join(",",alicloud_vswitch.vswitch.*.id)),1)
   security_ips         = [alicloud_vpc.vpc.cidr_block]
@@ -107,18 +108,18 @@ resource "alicloud_db_account" "account" {
   db_instance_id   = alicloud_db_instance.rds.id
   account_name     = var.rds_account_name
   account_password = var.rds_account_pwd
-  account_type     = "Normal"
+  account_type     = var.db_account_type
 }
 
 resource "alicloud_db_database" "db" {
   instance_id   = alicloud_db_instance.rds.id
-  name          = "magento"
-  character_set = "utf8"
+  name          = var.db_name
+  character_set = var.db_character_set
 }
 
 resource "alicloud_db_account_privilege" "privilege" {
   instance_id  = alicloud_db_instance.rds.id
   account_name = alicloud_db_account.account.name
-  privilege    = "ReadWrite"
+  privilege    = var.db_privilege
   db_names     = alicloud_db_database.db.*.name
 }
