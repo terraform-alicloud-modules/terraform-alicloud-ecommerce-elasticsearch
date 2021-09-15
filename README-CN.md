@@ -1,11 +1,11 @@
 Alicloud E-Commerce&Elasticsearch Terraform Module On Alibaba Cloud
 
-terraform-alicloud-e-commerce-elasticsearch
+terraform-alicloud-ecommerce-elasticsearch
 ---
 
 [English](README.md) | 简体中文
 
-本 Module 用于在阿里云创建一个服务电商的 Elasticsearch 搜索基础设施。
+本 Module 用于在阿里云创建一个服务电商的 ElasticSearch 搜索基础设施。
 
 本 Module 支持创建以下资源:
 

@@ -1,11 +1,11 @@
 Alicloud E-Commerce&Elasticsearch Terraform Module On Alibaba Cloud
 
-terraform-alicloud-e-commerce-elasticsearch
+terraform-alicloud-ecommerce-elasticsearch
 ---
 
 English | [简体中文](README-CN.md)
 
-This module is used to create an elasticsearch infrastructure serving e-commerce in Alibaba cloud.
+This module is used to create an elasticsearch infrastructure serving E-Commerce in Alibaba cloud.
 
 These types of resources are supported:
 
