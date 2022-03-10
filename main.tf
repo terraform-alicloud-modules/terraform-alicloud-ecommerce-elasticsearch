@@ -4,27 +4,10 @@ resource "alicloud_vpc" "vpc" {
 }
 
 resource "alicloud_vswitch" "vswitch" {
-  vpc_id     = alicloud_vpc.vpc.id
   count      = length(var.cidr_blocks)
-  cidr_block = lookup(var.cidr_blocks,"az${count.index}")
-  zone_id    = lookup(var.availability_zones,"az${count.index}")
-}
-
-# ECS
-resource "alicloud_instance" "instance" {
-  instance_name              = var.ecs_name
-  image_id                   = var.image_id
-  instance_type              = var.ecs_type
-  count                      = var.ecs_count
-  security_groups            = alicloud_security_group.group.*.id
-  availability_zone          = var.availability_zone
-  internet_charge_type       = var.internet_charge_type
-  internet_max_bandwidth_out = var.internet_max_bandwidth_out
-  password                   = var.ecs_password
-  instance_charge_type       = var.instance_charge_type
-  system_disk_category       = var.disk_category
-  system_disk_size           = var.system_disk_size
-  vswitch_id                 = element(split(",",join(",",alicloud_vswitch.vswitch.*.id)),1)
+  vpc_id     = alicloud_vpc.vpc.id
+  cidr_block = var.cidr_blocks[count.index]
+  zone_id    = element(var.availability_zones, count.index)
 }
 
 # Security Group
@@ -41,8 +24,8 @@ resource "alicloud_security_group_rule" "rdp" {
   policy            = var.rule_policy
   port_range        = var.rdp_port_range
   priority          = var.rule_priority
-  security_group_id = alicloud_security_group.group.id
   cidr_ip           = var.vpc_cidr
+  security_group_id = alicloud_security_group.group.id
 }
 
 resource "alicloud_security_group_rule" "ssh" {
@@ -52,8 +35,8 @@ resource "alicloud_security_group_rule" "ssh" {
   policy            = var.rule_policy
   port_range        = var.ssh_port_range
   priority          = var.rule_priority
-  security_group_id = alicloud_security_group.group.id
   cidr_ip           = var.vpc_cidr
+  security_group_id = alicloud_security_group.group.id
 }
 
 resource "alicloud_security_group_rule" "icmp" {
@@ -63,10 +46,9 @@ resource "alicloud_security_group_rule" "icmp" {
   policy            = var.rule_policy
   port_range        = var.icmp_port_range
   priority          = var.rule_priority
-  security_group_id = alicloud_security_group.group.id
   cidr_ip           = var.vpc_cidr
+  security_group_id = alicloud_security_group.group.id
 }
-
 
 resource "alicloud_security_group_rule" "http" {
   type              = var.rule_type
@@ -75,8 +57,25 @@ resource "alicloud_security_group_rule" "http" {
   policy            = var.rule_policy
   port_range        = var.http_port_range
   priority          = var.rule_priority
-  security_group_id = alicloud_security_group.group.id
   cidr_ip           = var.vpc_cidr
+  security_group_id = alicloud_security_group.group.id
+}
+
+# ECS
+resource "alicloud_instance" "instance" {
+  count                      = var.ecs_count
+  instance_name              = var.ecs_name
+  image_id                   = var.image_id
+  instance_type              = var.ecs_type
+  availability_zone          = var.availability_zone
+  vswitch_id                 = element(split(",", join(",", alicloud_vswitch.vswitch.*.id)), 1)
+  security_groups            = alicloud_security_group.group.*.id
+  internet_charge_type       = var.internet_charge_type
+  internet_max_bandwidth_out = var.internet_max_bandwidth_out
+  password                   = var.ecs_password
+  instance_charge_type       = var.ecs_charge_type != "" ? var.ecs_charge_type : var.instance_charge_type == "Postpaid" ? "PostPaid" : "PrePaid"
+  system_disk_category       = var.disk_category
+  system_disk_size           = var.system_disk_size
 }
 
 # EIP
@@ -100,7 +99,7 @@ resource "alicloud_db_instance" "rds" {
   instance_storage     = var.instance_storage
   instance_charge_type = var.instance_charge_type
   zone_id              = var.rds_zone_id
-  vswitch_id           = element(split(",",join(",",alicloud_vswitch.vswitch.*.id)),1)
+  vswitch_id           = element(split(",", join(",", alicloud_vswitch.vswitch.*.id)), 1)
   security_ips         = [alicloud_vpc.vpc.cidr_block]
 }
 
@@ -119,7 +118,7 @@ resource "alicloud_db_database" "db" {
 
 resource "alicloud_db_account_privilege" "privilege" {
   instance_id  = alicloud_db_instance.rds.id
-  account_name = alicloud_db_account.account.name
+  account_name = alicloud_db_account.account.account_name
   privilege    = var.db_privilege
   db_names     = alicloud_db_database.db.*.name
 }
